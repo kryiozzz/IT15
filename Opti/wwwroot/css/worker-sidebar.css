@@ -1,0 +1,138 @@
+﻿/* Worker Sidebar Styles */
+:root {
+    --primary: #4f46e5;
+    --primary-dark: #4338ca;
+    --secondary: #10b981;
+    --dark: #1e293b;
+    --light: #f8fafc;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --success: #22c55e;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    width: 280px;
+    height: 100vh;
+    background-color: var(--dark);
+    color: white;
+    position: fixed;
+    top: 0;
+    left: 0;
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.05);
+    z-index: 50;
+    transition: all 0.3s ease;
+}
+
+.sidebar-header {
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+    .sidebar-header h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+        background: linear-gradient(to right, #818cf8, #38bdf8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: 0.5px;
+    }
+
+.logo-icon {
+    margin-right: 10px;
+    color: var(--primary);
+    font-size: 1.8rem;
+}
+
+.nav-section {
+    padding: 1.5rem 1rem;
+}
+
+    .nav-section h3 {
+        color: #94a3b8;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 1rem;
+        padding: 0 0.5rem;
+        font-weight: 600;
+    }
+
+.nav-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.nav-item {
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+}
+
+    .nav-item:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-item.active {
+        background-color: rgba(79, 70, 229, 0.2);
+    }
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    color: #e2e8f0;
+    text-decoration: none;
+    font-size: 1rem;
+    transition: color 0.3s ease;
+    border-radius: 0.5rem;
+}
+
+    .nav-link:hover {
+        color: white;
+    }
+
+    .nav-link i {
+        margin-right: 10px;
+        font-size: 1.1rem;
+        width: 1.5rem;
+        text-align: center;
+    }
+
+.nav-item.active .nav-link {
+    color: white;
+    font-weight: 500;
+}
+
+/* Menu toggle button for mobile */
+.menu-toggle {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 100;
+    background-color: var(--primary);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 0.5rem;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .menu-toggle {
+        display: flex;
+    }
+}

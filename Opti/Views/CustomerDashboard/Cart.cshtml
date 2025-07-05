@@ -1,0 +1,193 @@
+﻿@model List<Opti.Controllers.CustomerDashboardController.CartItem>
+
+@{
+    ViewData["Title"] = "Your Cart - NFT Marketplace";
+    bool isUserLoggedIn = User.Identity.IsAuthenticated;
+    var stripePublishableKey = ViewBag.StripePublishableKey ?? "pk_test_51RLr7APYeZ7XeGcweHozfkKMXuwW2xPJ12zBQzzGNZIScsTIE0cu6zpoMARDTliCWbZZzj0FS0RWGR4C2OcRGTUZ006zCroFxl";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="~/css/cart.css" />
+    <!-- Add Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+    <div class="container">
+        @if (!isUserLoggedIn)
+        {
+                <div class="login-required">
+                    <i class="fas fa-user-lock login-icon"></i>
+                    <h2 class="login-title">Login Required</h2>
+                    <p class="login-message">
+                        You need to be logged in to view your cart and make purchases.
+                        Please login to continue shopping and access your cart.
+                    </p>
+                    <a href="@Url.Action("Login", "Account", new { returnUrl = Url.Action("Cart", "CustomerDashboard") })" class="login-btn">
+                        <i class="fas fa-sign-in-alt"></i> Log In to Continue
+                    </a>
+                    <div style="margin-top: 1.5rem;">
+                        <p>Don't have an account?</p>
+                        <a href="@Url.Action("Register", "Account")" class="browse-btn">
+                            <i class="fas fa-user-plus"></i> Create an Account
+                        </a>
+                    </div>
+                </div>
+        }
+        else if (Model == null || !Model.Any())
+        {
+                <div class="card empty-cart">
+                    <i class="fas fa-shopping-cart empty-cart-icon"></i>
+                    <h2 class="empty-cart-title">Your cart is empty</h2>
+                    <p class="empty-cart-message">Looks like you haven't added any items to your cart yet.</p>
+                    <a href="@Url.Action("Index", "CustomerDashboard")" class="browse-btn">
+                        <i class="fas fa-shopping-bag"></i> Browse Products
+                    </a>
+                </div>
+        }
+        else
+        {
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="cart-header">
+                                <h2>Your Shopping Cart</h2>
+                                <a href="@Url.Action("Index", "CustomerDashboard")" class="back-to-shop">
+                                    <i class="fas fa-arrow-left"></i> Continue Shopping
+                                </a>
+                            </div>
+
+                            <div class="table-wrapper">
+                                <table class="cart-table">
+                                    <thead>
+                                        <tr>
+                                            <th width="5%"></th>
+                                            <th width="45%">Product</th>
+                                            <th width="20%">Quantity</th>
+                                            <th width="15%">Price</th>
+                                            <th width="15%">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    @foreach (var item in Model)
+                                    {
+                                                <tr data-product-id="@item.ProductId">
+                                                    <td>
+                                                        <input type="checkbox" class="item-checkbox" checked>
+                                                    </td>
+                                                    <td>
+                                                        <div class="cart-item">
+                                                            <img src="@item.ImagePath" alt="@item.ProductName" class="item-image">
+                                                            <div class="item-details">
+                                                                <h6>@item.ProductName</h6>
+                                                                <p>@item.Description</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="quantity-control">
+                                                            <button onclick="updateQuantity(@item.ProductId, -1)">
+                                                                <i class="fas fa-minus"></i>
+                                                            </button>
+                                                            <span class="quantity-value">@item.Quantity</span>
+                                                            <button onclick="updateQuantity(@item.ProductId, 1)">
+                                                                <i class="fas fa-plus"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                    <td class="item-price">₱@(item.Price * item.Quantity)</td>
+                                                    <td class="action-buttons">
+                                                        <button onclick="removeFromCart(@item.ProductId)" title="Remove item">
+                                                            <i class="fas fa-trash-alt"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <div class="cart-summary">
+                            <h3 class="cart-summary-header">Order Summary</h3>
+
+                            <div class="summary-item">
+                                <span class="summary-item-label">Items (@Model.Sum(i => i.Quantity))</span>
+                                <span class="summary-item-value">₱@Model.Sum(i => i.Price * i.Quantity)</span>
+                            </div>
+
+                            <div class="summary-item">
+                                <span class="summary-item-label">Shipping</span>
+                                <span class="summary-item-value">Free</span>
+                            </div>
+
+                            <div class="summary-total">
+                                <span class="summary-total-label">Total</span>
+                                <span class="summary-total-value">₱@ViewBag.TotalPrice</span>
+                            </div>
+
+                            <form action="/Payment/CreateCheckoutSession" method="post" id="checkout-form">
+                                <input type="hidden" name="productIds" id="selected-products-input" />
+                                <button type="submit" class="btn btn-sm border-0 checkout-btn" style="background: linear-gradient(90deg, #007bff, #00c3ff); color: white; border-radius: 5px; width: 100%; padding: 12px;">
+                                    <i class="fas fa-lock"></i> Pay Now
+                                </button>
+                            </form>
+
+                            <!-- Add this script right below the form -->
+                            <script>
+                                document.getElementById('checkout-form').addEventListener('submit', function(e) {
+                                    e.preventDefault();
+
+                                    // Get all selected product IDs
+                                    const productIds = [];
+                                    document.querySelectorAll('tr[data-product-id]').forEach(row => {
+                                        const checkbox = row.querySelector('.item-checkbox');
+                                        if (!checkbox || checkbox.checked) {
+                                            productIds.push(row.getAttribute('data-product-id'));
+                                        }
+                                    });
+
+                                    if (productIds.length === 0) {
+                                        alert('Your cart is empty or no items are selected.');
+                                        return;
+                                    }
+
+                                    // Set the hidden input value
+                                    document.getElementById('selected-products-input').value = productIds.join(',');
+
+                                    // Submit the form
+                                    this.submit();
+                                });
+                            </script>
+                        </div>
+                    </div>
+                </div>
+        }
+    </div>
+
+    <footer class="footer">
+        <div class="footer-copyright">© 2025 - OptiFlow. All rights reserved.</div>
+        <div class="footer-links">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="/cookies">Cookie Policy</a>
+        </div>
+    </footer>
+
+    <!-- Add Stripe public key for JavaScript -->
+    <script>
+        const stripePublishableKey = '@stripePublishableKey';
+    </script>
+
+    <script src="~/js/cart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+</body>
+</html>

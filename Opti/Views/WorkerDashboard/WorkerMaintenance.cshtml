@@ -1,0 +1,381 @@
+﻿@using Opti.ViewModels
+@model MaintenanceViewModel
+@{
+    ViewData["Title"] = "Maintenance";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maintenance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/worker_dashboard.css">
+</head>
+
+<body>
+    <!-- Include the Worker Sidebar -->
+    @await Html.PartialAsync("_WorkerSidebar")
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">Maintenance</h1>
+            <div class="header-actions">
+                <button id="refreshMaintenance" class="btn btn-outline">
+                    <i class="fas fa-sync-alt"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Maintenance Overview -->
+        <div class="maintenance-overview">
+            <div class="stat-card">
+                <div class="stat-title">
+                    <i class="fas fa-tools" style="color: #ef4444;"></i>
+                    Machines Under Maintenance
+                </div>
+                <div class="stat-value">@Model.MaintenanceCount</div>
+                <div class="stat-info">
+                    @if (Model.MaintenanceCount > 0)
+                    {
+                        <span class="stat-attention"><i class="fas fa-exclamation-circle"></i> Requires Attention</span>
+                    }
+                    else
+                    {
+                        <span class="stat-good"><i class="fas fa-check-circle"></i> All Machines Operational</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (Model.MachinesUnderMaintenance != null && Model.MachinesUnderMaintenance.Any())
+        {
+            <!-- Maintenance Cards Section -->
+            <div class="maintenance-cards">
+                @foreach (var machine in Model.MachinesUnderMaintenance)
+                {
+                    <div class="maintenance-card" data-machine-id="@machine.MachineId">
+                        <div class="maintenance-card-header">
+                            <div class="maintenance-card-title">
+                                <h3>@machine.MachineName</h3>
+                                <span class="badge badge-warning">
+                                    <i class="fas fa-tools"></i>
+                                    Under Maintenance
+                                </span>
+                            </div>
+                            <div class="maintenance-card-actions">
+                                <button class="btn-icon view-maintenance-logs" data-id="@machine.MachineId" title="View Logs">
+                                    <i class="fas fa-clipboard-list"></i>
+                                </button>
+                                <button class="btn-icon complete-maintenance" data-id="@machine.MachineId" title="Complete Maintenance">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="btn-icon add-maintenance-log" data-id="@machine.MachineId" title="Add Log">
+                                    <i class="fas fa-plus-circle"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="maintenance-card-details">
+                            <div class="maintenance-detail">
+                                <span class="detail-label">Machine ID:</span>
+                                <span class="detail-value">#@machine.MachineId</span>
+                            </div>
+                            <div class="maintenance-detail">
+                                <span class="detail-label">Type:</span>
+                                <span class="detail-value">@machine.MachineType</span>
+                            </div>
+                            <div class="maintenance-detail">
+                                <span class="detail-label">Last Maintenance:</span>
+                                <span class="detail-value">@machine.LastMaintenanceDate.ToShortDateString()</span>
+                            </div>
+                            <div class="maintenance-detail">
+                                <span class="detail-label">Time in Maintenance:</span>
+                                @{
+                                    var daysInMaintenance = (DateTime.Now - machine.LastMaintenanceDate).Days;
+                                    var maintenanceClass = daysInMaintenance > 7 ? "maintenance-overdue" : "maintenance-normal";
+                                }
+                                <span class="detail-value @maintenanceClass">
+                                    @daysInMaintenance days
+                                    @if (daysInMaintenance > 7)
+                                    {
+                                        <i class="fas fa-exclamation-triangle" title="Maintenance taking longer than expected"></i>
+                                    }
+                                </span>
+                            </div>
+                        </div>
+                        <div class="maintenance-card-footer">
+                            <div class="maintenance-actions">
+                                <button class="btn btn-primary complete-maintenance" data-id="@machine.MachineId">
+                                    <i class="fas fa-check-circle"></i>
+                                    Complete Maintenance
+                                </button>
+                                <button class="btn btn-outline extend-maintenance" data-id="@machine.MachineId">
+                                    <i class="fas fa-clock"></i>
+                                    Extend Maintenance
+                                </button>
+                                <button class="btn btn-outline order-parts" data-id="@machine.MachineId">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Parts
+                                </button>
+                            </div>
+                        </div>
+                        <div class="maintenance-logs-preview">
+                            <h4>Recent Activity</h4>
+                            @if (Model.MaintenanceLogs.ContainsKey(machine.MachineId) && Model.MaintenanceLogs[machine.MachineId].Any())
+                            {
+                                <ul class="logs-list">
+                                    @foreach (var log in Model.MaintenanceLogs[machine.MachineId].Take(2))
+                                    {
+                                        <li class="log-item">
+                                            <span class="log-date">@log.Timestamp.ToString("MM/dd/yyyy HH:mm")</span>
+                                            <span class="log-action">@log.Action</span>
+                                        </li>
+                                    }
+                                </ul>
+                                @if (Model.MaintenanceLogs[machine.MachineId].Count > 2)
+                                {
+                                    <div class="more-logs">
+                                        <button class="view-all-logs" data-id="@machine.MachineId">
+                                            View all @Model.MaintenanceLogs[machine.MachineId].Count logs...
+                                        </button>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <p class="no-logs">No maintenance logs available.</p>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="no-maintenance">
+                <div class="no-data-message">
+                    <i class="fas fa-check-circle"></i>
+                    <h3>No Machines Under Maintenance</h3>
+                    <p>All machines are currently operational. Check the Machines page to view all machines.</p>
+                    <a href="/Machines" class="btn btn-primary">
+                        <i class="fas fa-cogs"></i>
+                        View All Machines
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Complete Maintenance Modal -->
+    <div id="completeMaintenanceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Complete Maintenance</h2>
+                <button class="close-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="completeMaintenanceForm">
+                    <input type="hidden" id="completeMachineId">
+                    <div class="form-group">
+                        <label for="workDone">Work Completed</label>
+                        <select id="workDone" class="form-control" required>
+                            <option value="">Select Work Type</option>
+                            <option value="Regular Maintenance">Regular Maintenance</option>
+                            <option value="Part Replacement">Part Replacement</option>
+                            <option value="Repair">Repair</option>
+                            <option value="Calibration">Calibration</option>
+                            <option value="Software Update">Software Update</option>
+                            <option value="Multiple Tasks">Multiple Tasks</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="maintenanceNotes">Maintenance Notes</label>
+                        <textarea id="maintenanceNotes" class="form-control" rows="3" required placeholder="Describe the work done, parts replaced, and any observations..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Machine Status Check</label>
+                        <div class="status-check-options">
+                            <label class="status-option">
+                                <input type="radio" name="statusCheck" value="fullyOperational" checked>
+                                <span class="status-check-label operational">
+                                    <i class="fas fa-check-circle"></i> Fully Operational
+                                </span>
+                            </label>
+                            <label class="status-option">
+                                <input type="radio" name="statusCheck" value="limitedOperation">
+                                <span class="status-check-label limited">
+                                    <i class="fas fa-exclamation-circle"></i> Limited Operation
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group" id="limitedOperationDetails" style="display: none;">
+                        <label for="operationLimitations">Operation Limitations</label>
+                        <textarea id="operationLimitations" class="form-control" rows="2" placeholder="Describe any limitations or special instructions..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="nextMaintenanceDate">Next Scheduled Maintenance</label>
+                        <input type="date" id="nextMaintenanceDate" class="form-control" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline close-modal">Cancel</button>
+                <button class="btn btn-success" id="submitCompleteMaintenance">Complete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Extend Maintenance Modal -->
+    <div id="extendMaintenanceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Extend Maintenance</h2>
+                <button class="close-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="extendMaintenanceForm">
+                    <input type="hidden" id="extendMachineId">
+                    <div class="form-group">
+                        <label for="extensionReason">Reason for Extension</label>
+                        <select id="extensionReason" class="form-control" required>
+                            <option value="">Select Reason</option>
+                            <option value="Waiting for Parts">Waiting for Parts</option>
+                            <option value="Additional Issues Found">Additional Issues Found</option>
+                            <option value="Technician Unavailable">Technician Unavailable</option>
+                            <option value="Complex Repair">Complex Repair</option>
+                            <option value="Testing Required">Extended Testing Required</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="extensionDetails">Details</label>
+                        <textarea id="extensionDetails" class="form-control" rows="3" required placeholder="Provide details about why the maintenance needs to be extended..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="newEstimatedCompletion">New Estimated Completion Date</label>
+                        <input type="date" id="newEstimatedCompletion" class="form-control" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline close-modal">Cancel</button>
+                <button class="btn btn-primary" id="submitExtendMaintenance">Extend</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Parts Modal -->
+    <div id="orderPartsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Order Parts</h2>
+                <button class="close-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="orderPartsForm">
+                    <input type="hidden" id="orderPartsMachineId">
+                    <div class="form-group">
+                        <label for="partName">Part Name</label>
+                        <input type="text" id="partName" class="form-control" required placeholder="Enter part name or part number...">
+                    </div>
+                    <div class="form-group">
+                        <label for="partQuantity">Quantity</label>
+                        <input type="number" id="partQuantity" class="form-control" required min="1" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="partUrgency">Urgency</label>
+                        <select id="partUrgency" class="form-control" required>
+                            <option value="Low">Low - Within 2 weeks</option>
+                            <option value="Medium">Medium - Within 1 week</option>
+                            <option value="High">High - Within 48 hours</option>
+                            <option value="Critical">Critical - ASAP</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="partNotes">Additional Notes</label>
+                        <textarea id="partNotes" class="form-control" rows="2" placeholder="Any specific requirements or details about the part..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline close-modal">Cancel</button>
+                <button class="btn btn-primary" id="submitOrderParts">Order</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Maintenance Log Modal -->
+    <div id="addLogModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Add Maintenance Log</h2>
+                <button class="close-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="addLogForm">
+                    <input type="hidden" id="logMachineId">
+                    <div class="form-group">
+                        <label for="logType">Log Type</label>
+                        <select id="logType" class="form-control" required>
+                            <option value="">Select Log Type</option>
+                            <option value="Progress Update">Progress Update</option>
+                            <option value="Issue Found">Issue Found</option>
+                            <option value="Part Replaced">Part Replaced</option>
+                            <option value="Test Performed">Test Performed</option>
+                            <option value="Calibration">Calibration</option>
+                            <option value="Note">General Note</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="logDetails">Details</label>
+                        <textarea id="logDetails" class="form-control" rows="3" required placeholder="Enter the details of the maintenance activity..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline close-modal">Cancel</button>
+                <button class="btn btn-primary" id="submitAddLog">Add Log</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Maintenance Logs Modal -->
+    <div id="viewLogsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Maintenance Logs</h2>
+                <button class="close-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="machine-header">
+                    <h3 id="logMachineName"></h3>
+                    <span id="logMachineId"></span>
+                </div>
+                <div class="logs-container" id="maintenanceLogsContainer">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline close-modal">Close</button>
+                <button class="btn btn-primary add-maintenance-log" id="addLogFromView">Add New Log</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        <link rel="stylesheet" href="~/js/worker_maintenance.js">
+
+    </script>
+
+    <style>
+        <link rel="stylesheet" href="~/css/worker_maintenance.css" >
+    </style>
+</body>
+</html>

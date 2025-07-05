@@ -1,0 +1,302 @@
+﻿@{
+    ViewData["Title"] = "User Management";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Management - Opti</title>
+
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="~/css/AdminDashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminSidebar.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminModal.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/UserManagement.css" asp-append-version="true" />
+
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+    <!-- Alert container -->
+    <div id="alertContainer"></div>
+
+    <!-- Anti-forgery token for AJAX requests -->
+    @Html.AntiForgeryToken()
+
+    <!-- Include Admin Sidebar -->
+    <partial name="_AdminSidebar" />
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="header">
+            <h1>User Management</h1>
+            <div class="header-actions">
+            </div>
+        </div>
+
+        <!-- User Stats Section -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">
+                    <i class="fas fa-users" style="color: #4f46e5;"></i>
+                    Total Users
+                </div>
+                <div class="stat-value" id="totalUsers">0</div>
+                <div class="stat-change stat-increase">
+                    <i class="fas fa-arrow-up"></i>
+                    <span id="userGrowthRate">0%</span> from last month
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-title">
+                    <i class="fas fa-user-shield" style="color: #10b981;"></i>
+                    Admin Users
+                </div>
+                <div class="stat-value" id="adminUsers">0</div>
+                <div class="stat-change">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="adminPercentage">0%</span> of total users
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-title">
+                    <i class="fas fa-hard-hat" style="color: #f59e0b;"></i>
+                    Worker Users
+                </div>
+                <div class="stat-value" id="workerUsers">0</div>
+                <div class="stat-change">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="workerPercentage">0%</span> of total users
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-title">
+                    <i class="fas fa-user" style="color: #3b82f6;"></i>
+                    Customer Users
+                </div>
+                <div class="stat-value" id="customerUsers">0</div>
+                <div class="stat-change">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="customerPercentage">0%</span> of total users
+                </div>
+            </div>
+        </div>
+
+        <!-- Add User Form -->
+        <div class="form-container">
+            <div class="page-title">
+                <h2 class="chart-title">Add New User</h2>
+                <button class="btn-primary" id="toggleAddUserForm">
+                    <i class="fas fa-plus"></i>
+                    Add User
+                </button>
+            </div>
+
+            <form id="addUserForm" style="display: none;">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label class="form-label" for="username">Username</label>
+                        <input type="text" id="username" name="username" class="form-input" required placeholder="Enter username">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email</label>
+                        <input type="email" id="email" name="email" class="form-input" required placeholder="Enter email">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password</label>
+                        <input type="password" id="password" name="password" class="form-input" required placeholder="Enter password">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="confirmPassword">Confirm Password</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" class="form-input" required placeholder="Confirm password">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="role">Role</label>
+                        <select id="role" name="role" class="form-select" required>
+                            <option value="">Select Role</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Worker">Worker</option>
+                            <option value="Customer">Customer</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex justify-end mt-4">
+                    <button type="button" class="btn btn-outline mr-2" id="cancelAddUser">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        Create User
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Users Table -->
+        <div class="table-container">
+            <div class="table-header">
+                <h3 class="table-title">Users List</h3>
+                <div class="table-actions">
+                    <div class="relative">
+                        <input type="text" id="userSearch" placeholder="Search users..." class="form-input" style="padding-left: 2.5rem;">
+                        <i class="fas fa-search" style="position: absolute; left: 0.75rem; top: 0.75rem; color: #94a3b8;"></i>
+                    </div>
+                    <div class="filter-dropdown">
+                        <button class="btn-outline btn-sm" id="filterButton">
+                            <i class="fas fa-filter"></i>
+                            Filter
+                        </button>
+                        <div class="filter-content" id="filterDropdown">
+                            <div class="filter-section">
+                                <h4>Role</h4>
+                                <div class="filter-option">
+                                    <input type="checkbox" id="filterRoleAdmin" class="role-filter" value="Admin" checked>
+                                    <label for="filterRoleAdmin">Admin</label>
+                                </div>
+                                <div class="filter-option">
+                                    <input type="checkbox" id="filterRoleWorker" class="role-filter" value="Worker" checked>
+                                    <label for="filterRoleWorker">Worker</label>
+                                </div>
+                                <div class="filter-option">
+                                    <input type="checkbox" id="filterRoleCustomer" class="role-filter" value="Customer" checked>
+                                    <label for="filterRoleCustomer">Customer</label>
+                                </div>
+                            </div>
+                            <div class="filter-section">
+                                <h4>Status</h4>
+                                <div class="filter-option">
+                                    <input type="checkbox" id="filterStatusActive" class="status-filter" value="true" checked>
+                                    <label for="filterStatusActive">Active</label>
+                                </div>
+                                <div class="filter-option">
+                                    <input type="checkbox" id="filterStatusInactive" class="status-filter" value="false" checked>
+                                    <label for="filterStatusInactive">Inactive</label>
+                                </div>
+                            </div>
+                            <div class="filter-actions">
+                                <button class="btn btn-sm btn-outline" id="resetFilters">Reset</button>
+                                <button class="btn btn-sm btn-primary" id="applyFilters">Apply</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>User ID</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <!-- User data will be loaded here dynamically -->
+                </tbody>
+            </table>
+
+            <div class="flex justify-between items-center mt-4">
+                <div>
+                    <span class="text-sm text-gray-500">Showing <span id="userCount">0</span> users</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button class="btn-outline btn-sm" id="prevPage" disabled>
+                        <i class="fas fa-chevron-left"></i>
+                        Previous
+                    </button>
+                    <button class="btn-outline btn-sm" id="nextPage">
+                        Next
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Edit Modal -->
+    <div class="modal-overlay" id="editUserModal">
+        <div class="modal" style="width: 600px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Edit User</h2>
+                <button class="modal-close" onclick="closeModal('editUserModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="editUserId" name="userId">
+
+                    <div class="form-group">
+                        <label class="form-label" for="editUsername">Username</label>
+                        <input type="text" id="editUsername" name="username" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="editEmail">Email</label>
+                        <input type="email" id="editEmail" name="email" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="editRole">Role</label>
+                        <select id="editRole" name="role" class="form-select" required>
+                            <option value="Admin">Admin</option>
+                            <option value="Worker">Worker</option>
+                            <option value="Customer">Customer</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="editStatus">Status</label>
+                        <select id="editStatus" name="status" class="form-select" required>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="resetPassword" name="resetPassword">
+                            Reset Password
+                        </label>
+                    </div>
+
+                    <div id="passwordResetFields" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label" for="newPassword">New Password</label>
+                            <input type="password" id="newPassword" name="newPassword" class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="confirmNewPassword">Confirm New Password</label>
+                            <input type="password" id="confirmNewPassword" name="confirmNewPassword" class="form-input">
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline" onclick="closeModal('editUserModal')">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include JavaScript -->
+    <script src="~/js/UserManagement.js" asp-append-version="true"></script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+﻿@{
+    var controllerName = ViewContext.RouteData.Values["controller"]?.ToString();
+    var actionName = ViewContext.RouteData.Values["action"]?.ToString();
+}
+
+<link rel="stylesheet" href="~/css/worker-sidebar.css">
+
+<!-- Worker Dashboard Sidebar -->
+<div class="sidebar">
+    <div class="sidebar-header">
+        <i class="fas fa-industry logo-icon"></i>
+        <h2>Worker Dashboard</h2>
+    </div>
+
+    <div class="nav-section">
+        <h3>PRODUCTION</h3>
+        <ul class="nav-list">
+            <li class="nav-item @(controllerName == "WorkerDashboard" ? "active" : "")">
+                <a href="/WorkerDashboard" class="nav-link">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+            </li>
+            <li class="nav-item @(controllerName == "Machines" && actionName == "Index" ? "active" : "")">
+                <a href="/Machines" class="nav-link">
+                    <i class="fas fa-cogs"></i>
+                    Machines
+                </a>
+            </li>
+            <li class="nav-item @(controllerName == "ProductionOrders" ? "active" : "")">
+                <a href="/ProductionOrders" class="nav-link">
+                    <i class="fas fa-clipboard-list"></i>
+                    Production Orders
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="nav-section">
+        <h3>ACCOUNT</h3>
+        <ul class="nav-list">
+            <li class="nav-item">
+                <a href="/Account/Logout" class="nav-link">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<!-- Mobile menu toggle button -->
+<button class="menu-toggle">
+    <i class="fas fa-bars"></i>
+</button>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const menuButton = document.querySelector('.menu-toggle');
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
+
+        function checkWindowSize() {
+            if (window.innerWidth <= 768) {
+                sidebar.style.transform = 'translateX(-100%)';
+                mainContent.style.marginLeft = '0';
+                menuButton.style.display = 'flex';
+            } else {
+                sidebar.style.transform = 'translateX(0)';
+                mainContent.style.marginLeft = '280px';
+                menuButton.style.display = 'none';
+            }
+        }
+
+        // Initial check
+        checkWindowSize();
+
+        // Event listener for window resize
+        window.addEventListener('resize', checkWindowSize);
+
+        // Event listener for menu button click
+        menuButton.addEventListener('click', function() {
+            if (sidebar.style.transform === 'translateX(0px)') {
+                sidebar.style.transform = 'translateX(-100%)';
+            } else {
+                sidebar.style.transform = 'translateX(0)';
+            }
+        });
+    });
+</script>

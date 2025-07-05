@@ -1,0 +1,191 @@
+﻿@model List<Opti.Models.User>
+@{
+    ViewData["Title"] = "User Login History";
+    Layout = "_AdminLayout"; // Use your admin layout
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">User Login History</h6>
+            <a href="@Url.Action("Index", "AdminDashboard")" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-arrow-left mr-1"></i> Back to Dashboard
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="userLoginTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Last Login</th>
+                            <th>Last Logout</th>
+                            <th>Status</th>
+                            <th>Session Duration</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model)
+                        {
+                            <tr>
+                                <td>@user.UserId</td>
+                                <td>@user.Username</td>
+                                <td>@user.Email</td>
+                                <td>
+                                    <span class="badge @GetRoleBadgeClass(user.Role)">
+                                        @user.Role
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (user.LastLoginDate.HasValue)
+                                    {
+                                        <span title="@user.LastLoginDate.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                                            @user.LastLoginDate.Value.ToString("MM/dd/yyyy HH:mm")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Never</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (user.LastLogoutDate.HasValue)
+                                    {
+                                        <span title="@user.LastLogoutDate.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                                            @user.LastLogoutDate.Value.ToString("MM/dd/yyyy HH:mm")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Never</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (user.IsActive)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Inactive</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (user.LastLoginDate.HasValue && user.LastLogoutDate.HasValue && user.LastLogoutDate > user.LastLoginDate)
+                                    {
+                                        TimeSpan duration = user.LastLogoutDate.Value - user.LastLoginDate.Value;
+                                        <span>@FormatDuration(duration)</span>
+                                    }
+                                    else if (user.LastLoginDate.HasValue && (user.LastLogoutDate == null || user.LastLogoutDate < user.LastLoginDate))
+                                    {
+                                        <span class="text-success">Currently Online</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Actions
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="showUserDetails(@user.UserId)">
+                                                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
+                                                    View Details
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="editUser(@user.UserId)">
+                                                    <i class="fas fa-edit fa-sm fa-fw mr-2 text-gray-400"></i>
+                                                    Edit User
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="post" action="@Url.Action("ToggleUserStatus", "AdminDashboard")"
+                                                      style="display: inline;" onsubmit="return confirm('Are you sure you want to @(user.IsActive ? "deactivate" : "activate") this user?');">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="userId" value="@user.UserId" />
+                                                    <button type="submit" class="dropdown-item">
+                                                        <i class="fas @(user.IsActive ? "fa-user-slash" : "fa-user-check") fa-sm fa-fw mr-2 text-gray-400"></i>
+                                                        @(user.IsActive ? "Deactivate" : "Activate") User
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Initialize DataTable
+            $('#userLoginTable').DataTable({
+                order: [[4, 'desc']], // Sort by Last Login descending
+                pageLength: 25,
+                lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                language: {
+                    search: "Search users:"
+                }
+            });
+        });
+
+        function showUserDetails(userId) {
+            // In a real application, this would open a modal with user details
+            alert('Show details for user ID: ' + userId);
+        }
+
+        function editUser(userId) {
+            // In a real application, this would open a modal to edit the user
+            alert('Edit user ID: ' + userId);
+        }
+    </script>
+}
+
+@functions {
+    string GetRoleBadgeClass(string role)
+    {
+        return role switch
+        {
+            "Admin" => "bg-danger",
+            "Worker" => "bg-primary",
+            "Customer" => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+
+    string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalDays >= 1)
+        {
+            return $"{Math.Floor(duration.TotalDays)}d {duration.Hours}h {duration.Minutes}m";
+        }
+        else if (duration.TotalHours >= 1)
+        {
+            return $"{Math.Floor(duration.TotalHours)}h {duration.Minutes}m";
+        }
+        else if (duration.TotalMinutes >= 1)
+        {
+            return $"{Math.Floor(duration.TotalMinutes)}m {duration.Seconds}s";
+        }
+        else
+        {
+            return $"{duration.Seconds}s";
+        }
+    }
+}

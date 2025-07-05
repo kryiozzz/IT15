@@ -1,0 +1,793 @@
+﻿@model IEnumerable<Opti.Models.ProductionOrder>
+@{
+    ViewData["Title"] = "Production Orders";
+    Layout = null;
+}
+
+@* Add anti-forgery token *@
+@Html.AntiForgeryToken()
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Production Orders</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/worker_dashboard.css">
+</head>
+
+<body>
+    <!-- Include the Worker Sidebar -->
+    @await Html.PartialAsync("_WorkerSidebar")
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">Production Orders</h1>
+            <div class="header-actions">
+                <button id="refreshOrders" class="btn btn-outline">
+                    <i class="fas fa-sync-alt"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Orders Overview Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">
+                    <i class="fas fa-clipboard-check" style="color: #10b981;"></i>
+                    Completed Orders
+                </div>
+                <div class="stat-value">@Model.Count(o => o.Status == "Completed")</div>
+                <div class="stat-change stat-increase">
+                    <i class="fas fa-check-circle"></i>
+                    Finished Production
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-title">
+                    <i class="fas fa-spinner" style="color: #f59e0b;"></i>
+                    In Progress
+                </div>
+                <div class="stat-value">@Model.Count(o => o.Status == "In Progress")</div>
+                <div class="stat-change stat-neutral">
+                    <i class="fas fa-cogs"></i>
+                    Currently Processing
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-title">
+                    <i class="fas fa-clock" style="color: #6366f1;"></i>
+                    Pending Orders
+                </div>
+                <div class="stat-value">@Model.Count(o => o.Status == "Pending")</div>
+                <div class="stat-change stat-neutral">
+                    <i class="fas fa-hourglass-half"></i>
+                    Waiting to Start
+                </div>
+            </div>
+        </div>
+
+        <!-- Production Orders List Section -->
+        <div class="table-container">
+            <div class="chart-header">
+                <h2 class="chart-title">
+                    <i class="fas fa-clipboard-list" style="color: #10b981;"></i>
+                    Production Orders
+                </h2>
+                <div class="chart-actions">
+                    <div class="filter-group">
+                        <select id="orderStatusFilter" class="filter-select">
+                            <option value="all" selected>All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="inprogress">In Progress</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                        <input type="date" id="orderDateFilter" class="filter-date" />
+                        <button id="applyOrderFilter" class="btn btn-outline">
+                            <i class="fas fa-filter"></i>
+                            Apply Filter
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <table class="data-table" id="ordersTable">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Status</th>
+                        <th>Order Date</th>
+                        <th>Progress</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        @foreach (var order in Model)
+                        {
+                            <tr data-status="@order.Status.ToLower().Replace(" ", "")" data-date="@order.OrderDate.ToString("yyyy-MM-dd")">
+                                <td>#@order.OrderId</td>
+                                <td>@(order.Product != null ? order.Product.ProductName : "Unknown Product")</td>
+                                <td>@order.Quantity</td>
+                                <td>
+                                    @if (order.Status == "Completed")
+                                    {
+                                        <span class="badge badge-success">
+                                            <i class="fas fa-check-circle"></i>
+                                            Completed
+                                        </span>
+                                    }
+                                    else if (order.Status == "In Progress")
+                                    {
+                                        <span class="badge badge-warning">
+                                            <i class="fas fa-spinner"></i>
+                                            In Progress
+                                        </span>
+                                    }
+                                    else if (order.Status == "Pending")
+                                    {
+                                        <span class="badge badge-neutral">
+                                            <i class="fas fa-clock"></i>
+                                            Pending
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-neutral">@order.Status</span>
+                                    }
+                                </td>
+                                <td>@order.OrderDate.ToShortDateString()</td>
+                                <td>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                        @{
+                                            var progress = order.Status == "Completed" ? 100 : order.Status == "In Progress" ? new Random().Next(10, 90) : 0;
+                                        }
+                                        <div class="bg-blue-600 h-2.5 rounded-full" style="width: @progress%"></div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon view-order" data-id="@order.OrderId">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        @if (order.Status == "Pending")
+                                        {
+                                            <button class="btn-icon start-production" data-id="@order.OrderId" title="Start Production">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                        }
+                                        else if (order.Status == "In Progress")
+                                        {
+                                            <button class="btn-icon complete-production" data-id="@order.OrderId" title="Complete Production">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center">No production orders found in the database.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- View Order Modal -->
+    <div id="viewOrderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Order Details</h2>
+                <button class="close-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="order-details">
+                    <div class="order-info">
+                        <h3 id="productName"></h3>
+                        <p><strong>Order ID:</strong> <span id="orderId"></span></p>
+                        <p><strong>Quantity:</strong> <span id="quantity"></span></p>
+                        <p><strong>Status:</strong> <span id="status"></span></p>
+                        <p><strong>Order Date:</strong> <span id="orderDate"></span></p>
+                        <p><strong>Assigned To:</strong> <span id="assignedTo"></span></p>
+                    </div>
+                </div>
+                <div class="order-progress">
+                    <h3>Production Progress</h3>
+                    <div class="progress-timeline">
+                        <div class="progress-step completed">
+                            <div class="progress-icon">
+                                <i class="fas fa-clipboard-list"></i>
+                            </div>
+                            <div class="progress-content">
+                                <h4>Order Created</h4>
+                                <p id="createdDate"></p>
+                            </div>
+                        </div>
+                        <div class="progress-connector"></div>
+                        <div class="progress-step" id="inProgressStep">
+                            <div class="progress-icon">
+                                <i class="fas fa-cogs"></i>
+                            </div>
+                            <div class="progress-content">
+                                <h4>In Production</h4>
+                                <p id="startedDate">Not started yet</p>
+                            </div>
+                        </div>
+                        <div class="progress-connector"></div>
+                        <div class="progress-step" id="completedStep">
+                            <div class="progress-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="progress-content">
+                                <h4>Completed</h4>
+                                <p id="completedDate">Not completed yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline close-modal">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Production Modal -->
+    <div id="startProductionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Start Production</h2>
+                <button class="close-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="startProductionForm">
+                    <input type="hidden" id="startOrderId">
+                    <div class="form-group">
+                        <label for="estimatedCompletionDate">Estimated Completion Date</label>
+                        <input type="date" id="estimatedCompletionDate" class="form-control" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline close-modal">Cancel</button>
+                <button class="btn btn-primary" id="submitStartProduction">Start Production</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Complete Production Modal -->
+    <div id="completeProductionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Complete Production</h2>
+                <button class="close-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="completeProductionForm">
+                    <input type="hidden" id="completeOrderId">
+                    <div class="form-group">
+                        <label for="actualQuantity">Actual Quantity Produced</label>
+                        <input type="number" id="actualQuantity" class="form-control" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline close-modal">Cancel</button>
+                <button class="btn btn-success" id="submitCompleteProduction">Complete Production</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mobile sidebar functionality
+            const menuButton = document.querySelector('.menu-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+
+            function checkWindowSize() {
+                if (window.innerWidth <= 768) {
+                    sidebar.style.transform = 'translateX(-100%)';
+                    mainContent.style.marginLeft = '0';
+                    menuButton.style.display = 'flex';
+                } else {
+                    sidebar.style.transform = 'translateX(0)';
+                    mainContent.style.marginLeft = '280px';
+                    menuButton.style.display = 'none';
+                }
+            }
+
+            // Initial check
+            checkWindowSize();
+
+            // Event listener for window resize
+            window.addEventListener('resize', checkWindowSize);
+
+            // Event listener for menu button click
+            menuButton.addEventListener('click', function() {
+                if (sidebar.style.transform === 'translateX(0px)') {
+                    sidebar.style.transform = 'translateX(-100%)';
+                } else {
+                    sidebar.style.transform = 'translateX(0)';
+                }
+            });
+
+            // Modal functionality
+            const modals = document.querySelectorAll('.modal');
+            const closeButtons = document.querySelectorAll('.close-modal');
+
+            // Function to open a specific modal
+            function openModal(modalId) {
+                document.getElementById(modalId).style.display = 'flex';
+            }
+
+            // Function to close all modals
+            function closeAllModals() {
+                modals.forEach(modal => {
+                    modal.style.display = 'none';
+                });
+            }
+
+            // Add event listeners to close buttons
+            closeButtons.forEach(button => {
+                button.addEventListener('click', closeAllModals);
+            });
+
+            // Close modal when clicking outside
+            window.addEventListener('click', function(event) {
+                modals.forEach(modal => {
+                    if (event.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            });
+
+            // View Order Button Click
+            const viewButtons = document.querySelectorAll('.view-order');
+            viewButtons.forEach(button => {
+                button.addEventListener('click', async function() {
+                    const orderId = this.getAttribute('data-id');
+
+                    try {
+                        // Fetch order details from the server
+                        const response = await fetch(`/ProductionOrders/GetOrderDetails?orderId=${orderId}`);
+                        if (!response.ok) {
+                            throw new Error('Failed to fetch order details');
+                        }
+
+                        const orderData = await response.json();
+
+                        // Populate modal with actual data from server
+                        document.getElementById('orderId').textContent = '#' + orderData.orderId;
+                        document.getElementById('productName').textContent = orderData.productName;
+                        document.getElementById('quantity').textContent = orderData.quantity;
+                        document.getElementById('status').textContent = orderData.status;
+                        document.getElementById('orderDate').textContent = orderData.orderDate;
+                        document.getElementById('assignedTo').textContent = orderData.assignedTo;
+
+                        // Set progress steps based on status
+                        const status = orderData.status;
+                        document.getElementById('createdDate').textContent = orderData.orderDate;
+
+                        const inProgressStep = document.getElementById('inProgressStep');
+                        const completedStep = document.getElementById('completedStep');
+
+                        if (status.includes('In Progress') || status.includes('Completed')) {
+                            inProgressStep.classList.add('completed');
+                            // Use actual start date if available
+                            document.getElementById('startedDate').textContent = orderData.startDate || 'In progress';
+                        } else {
+                            inProgressStep.classList.remove('completed');
+                            document.getElementById('startedDate').textContent = 'Not started yet';
+                        }
+
+                        if (status.includes('Completed')) {
+                            completedStep.classList.add('completed');
+                            // Use actual completion date if available
+                            document.getElementById('completedDate').textContent = orderData.completedDate || 'Recently completed';
+                        } else {
+                            completedStep.classList.remove('completed');
+                            document.getElementById('completedDate').textContent = 'Not completed yet';
+                        }
+
+                        openModal('viewOrderModal');
+                    } catch (error) {
+                        console.error('Error fetching order details:', error);
+                        alert('Failed to load order details. Please try again.');
+                    }
+                });
+            });
+
+            // Start Production Button Click
+            const startButtons = document.querySelectorAll('.start-production');
+            startButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const orderId = this.getAttribute('data-id');
+                    document.getElementById('startOrderId').value = orderId;
+
+                    // Set default estimated completion date (7 days from now)
+                    const today = new Date();
+                    const nextWeek = new Date(today.setDate(today.getDate() + 7));
+                    document.getElementById('estimatedCompletionDate').valueAsDate = nextWeek;
+
+                    openModal('startProductionModal');
+                });
+            });
+
+            // Complete Production Button Click
+            const completeButtons = document.querySelectorAll('.complete-production');
+            completeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const orderId = this.getAttribute('data-id');
+                    document.getElementById('completeOrderId').value = orderId;
+
+                    // Set default quantity to the same as ordered
+                    const row = this.closest('tr');
+                    const quantity = row.cells[2].textContent;
+                    document.getElementById('actualQuantity').value = quantity;
+
+                    openModal('completeProductionModal');
+                });
+            });
+
+            // Submit Start Production Form
+            document.getElementById('submitStartProduction').addEventListener('click', async function() {
+                const orderId = document.getElementById('startOrderId').value;
+                const estimatedDate = document.getElementById('estimatedCompletionDate').value;
+
+                if (!estimatedDate) {
+                    alert('Please select an estimated completion date.');
+                    return;
+                }
+
+                try {
+                    // Get CSRF token if it exists
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+                    const formData = new FormData();
+                    formData.append('orderId', orderId);
+                    formData.append('estimatedCompletionDate', estimatedDate);
+
+                    if (token) {
+                        formData.append('__RequestVerificationToken', token);
+                    }
+
+                    const response = await fetch('/ProductionOrders/StartProduction', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    // Log response details for debugging
+                    console.log('Response status:', response.status);
+                    console.log('Response headers:', response.headers);
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Error response:', errorText);
+                        throw new Error(`Failed to start production: ${response.status} - ${errorText}`);
+                    }
+
+                    let result;
+                    try {
+                        result = await response.json();
+                    } catch (jsonError) {
+                        console.error('Failed to parse JSON response:', jsonError);
+                        throw new Error('Invalid response format from server');
+                    }
+
+                    if (result.success) {
+                        alert('Production started successfully!');
+                        // Reset and close the form
+                        document.getElementById('startProductionForm').reset();
+                        closeAllModals();
+                        window.location.reload(); // Refresh the page to show updated data
+                    } else {
+                        alert('Failed to start production: ' + (result.message || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error starting production:', error);
+                    alert('Failed to start production: ' + error.message);
+                }
+            });
+
+            // Submit Complete Production Form
+            document.getElementById('submitCompleteProduction').addEventListener('click', async function() {
+                const orderId = document.getElementById('completeOrderId').value;
+                const actualQuantity = document.getElementById('actualQuantity').value;
+
+                if (!actualQuantity || actualQuantity <= 0) {
+                    alert('Please enter a valid quantity.');
+                    return;
+                }
+
+                try {
+                    // Get CSRF token if it exists
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+                    const formData = new FormData();
+                    formData.append('orderId', orderId);
+                    formData.append('actualQuantity', actualQuantity);
+
+                    if (token) {
+                        formData.append('__RequestVerificationToken', token);
+                    }
+
+                    const response = await fetch('/ProductionOrders/CompleteProduction', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    // Log response details for debugging
+                    console.log('Response status:', response.status);
+                    console.log('Response headers:', response.headers);
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Error response:', errorText);
+                        throw new Error(`Failed to complete production: ${response.status} - ${errorText}`);
+                    }
+
+                    let result;
+                    try {
+                        result = await response.json();
+                    } catch (jsonError) {
+                        console.error('Failed to parse JSON response:', jsonError);
+                        throw new Error('Invalid response format from server');
+                    }
+
+                    if (result.success) {
+                        alert('Production completed successfully!');
+                        // Reset and close the form
+                        document.getElementById('completeProductionForm').reset();
+                        closeAllModals();
+                        window.location.reload(); // Refresh the page to show updated data
+                    } else {
+                        alert('Failed to complete production: ' + (result.message || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error completing production:', error);
+                    alert('Failed to complete production: ' + error.message);
+                }
+            });
+
+            // Filter Orders
+            document.getElementById('applyOrderFilter').addEventListener('click', function() {
+                const statusFilter = document.getElementById('orderStatusFilter').value;
+                const dateFilter = document.getElementById('orderDateFilter').value;
+
+                const rows = document.querySelectorAll('#ordersTable tbody tr');
+
+                rows.forEach(row => {
+                    const rowStatus = row.getAttribute('data-status');
+                    const rowDate = row.getAttribute('data-date');
+
+                    const statusMatch = statusFilter === 'all' || rowStatus === statusFilter;
+                    const dateMatch = !dateFilter || rowDate === dateFilter;
+
+                    if (statusMatch && dateMatch) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+
+            // Refresh button
+            document.getElementById('refreshOrders').addEventListener('click', function() {
+                window.location.reload();
+            });
+        });
+    </script>
+
+    <style>
+        /* Additional styles for the Production Orders page */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: 0.5rem;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #64748b;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+            .form-group label {
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 500;
+                color: #334155;
+            }
+
+        .form-control {
+            display: block;
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.375rem;
+            background-color: #f8fafc;
+            color: #334155;
+            font-size: 0.875rem;
+        }
+
+        textarea.form-control {
+            resize: vertical;
+        }
+
+        .order-info h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+        }
+
+        .order-info p {
+            margin: 0.5rem 0;
+        }
+
+        .order-progress h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .progress-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .progress-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            opacity: 0.6;
+        }
+
+            .progress-step.completed {
+                opacity: 1;
+            }
+
+        .progress-icon {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            background-color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+        }
+
+        .progress-step.completed .progress-icon {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .progress-content h4 {
+            margin: 0 0 0.25rem 0;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .progress-content p {
+            margin: 0;
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .progress-connector {
+            width: 2px;
+            height: 1.5rem;
+            background-color: #e2e8f0;
+            margin-left: 1rem;
+        }
+
+        .btn-success {
+            background-color: #10b981;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            border: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+            .btn-success:hover {
+                background-color: #0f9d58;
+            }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .filter-select, .filter-date {
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            border: 1px solid #e2e8f0;
+            background-color: #f8fafc;
+            color: #334155;
+            font-size: 0.875rem;
+        }
+    </style>
+</body>
+</html>
